@@ -1,4 +1,53 @@
 import express from 'express';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
+
+const router = express.Router();
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+// GET /api/services
+router.get('/', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No token' });
+    const { data, error } = await supabase.from('services').select('*').eq('is_active', true);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/services
+router.post('/', async (req, res) => {
+  try {
+    const { name, description, price, deposit_amount, duration_minutes, category } = req.body;
+    const { data, error } = await supabase
+      .from('services')
+      .insert({ name, description, price, deposit_amount, duration_minutes, category, is_active: true })
+      .select()
+      .single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/services/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('services').update({ is_active: false }).eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ message: 'Service deactivated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;
+import express from 'express';
 import { getServices, getServiceById } from '../services/supabase.js';
 
 const router = express.Router();
